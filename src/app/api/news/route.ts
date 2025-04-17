@@ -13,7 +13,7 @@ const groq = new Groq({
 // Function to fetch latest news from an RSS feed
 export async function GET() {
     try {
-        const feed = await parser.parseURL("https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml");
+        const feed = await parser.parseURL("https://news.google.com/rss");
         const articles = feed.items.slice(0, 3);
 
         const summaries = await Promise.all(
