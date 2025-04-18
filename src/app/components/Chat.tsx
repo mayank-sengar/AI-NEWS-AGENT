@@ -1,26 +1,48 @@
 "use client";
-import { SignIn, SignUp, UserButton, useUser } from "@clerk/nextjs";
+import { SignIn, UserButton, useUser } from "@clerk/nextjs";
 import axios from "axios";
-import { BotIcon, Send } from "lucide-react"; // Removed unused 'User'
-import { useState, useEffect, useRef } from "react";
+import { BotIcon, Send } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../lib/supabase";  // Make sure supabase is correctly set up
 
 export default function Chat() {
     const { user, isSignedIn } = useUser();
     const [messages, setMessages] = useState<{ id: string; role: string; content: string }[]>([]);
     const [input, setInput] = useState("");
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
-    // Removed unused: const [showSignUp, setShowSignUp] = useState(false);
 
+    // Scroll to the bottom when new messages are added
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
+    // Fetch messages from Supabase
+    const fetchMessages = useCallback(async () => {
+        if (!user?.id) return;
+
+        const { data, error } = await supabase
+            .from("messages")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: true });
+
+        if (error) {
+            console.error("Error fetching messages: ", error.message || error);
+        } else {
+            setMessages(data.map((msg) => ({
+                id: msg.id,
+                role: msg.role,
+                content: msg.content,
+            })));
+        }
+    }, [user?.id]);
+
     useEffect(() => {
         if (user) fetchMessages();
-    }, [user]);
+    }, [user, fetchMessages]);
 
+    // Subscribe to real-time updates for messages
     useEffect(() => {
         if (!user) return;
 
@@ -49,24 +71,7 @@ export default function Chat() {
         };
     }, [user]);
 
-    const fetchMessages = async () => {
-        const { data, error } = await supabase
-            .from("messages")
-            .select("*")
-            .eq("user_id", user?.id)
-            .order("created_at", { ascending: true });
-
-        if (error) {
-            console.error("Error fetching messages: ", error);
-        } else {
-            setMessages(data.map((msg) => ({
-                id: msg.id,
-                role: msg.role,
-                content: msg.content
-            })));
-        }
-    };
-
+    // Send a message
     const sendMessage = async () => {
         if (!input.trim()) return;
 
@@ -121,25 +126,25 @@ export default function Chat() {
                             messages.map((msg) => (
                                 <div
                                     key={msg.id}
-                                    className={`flex items-start gap-3 w-full ${msg.role === "user" ? "justify-end" : "justify-start"
-                                        }`}
+                                    className={`flex items-start gap-3 w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                                 >
-                                    {msg.role === "ai" ?
+                                    {msg.role === "ai" ? (
                                         <div className="flex gap-2">
                                             <BotIcon className="w-10 h-10 text-gray-400" />
                                             <div className="p-3 rounded-lg max-w-full bg-gray-800 text-gray-200 m-2" >
                                                 <ReactMarkdown>{msg.content}</ReactMarkdown>
                                             </div>
-                                        </div> :
+                                        </div>
+                                    ) : (
                                         <div className="flex gap-2">
                                             <div className="p-3 rounded-lg max-w-full bg-blue-500 text-white ">
-                                                <span className="break-words" >
+                                                <span className="break-words">
                                                     {msg.content}
                                                 </span>
                                             </div>
                                             <UserButton />
                                         </div>
-                                    }
+                                    )}
                                 </div>
                             ))
                         )}
