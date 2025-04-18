@@ -1,124 +1,177 @@
-import { NextResponse } from "next/server";
-import Parser from "rss-parser";
-import Groq from "groq-sdk";
-import { JSDOM } from "jsdom";
+"use client";
+import { SignIn, SignUp, UserButton, useUser } from "@clerk/nextjs";
+import axios from "axios";
+import { BotIcon, Send, User } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
+import { supabase } from "../lib/supabase";
 
-const parser: Parser = new Parser();
-const GROQ_API_KEY = process.env.NEXT_PUBLIC_GROQ_API_KEY;
+export default function Chat() {
+    const { user, isSignedIn } = useUser();
+    const [messages, setMessages] = useState<{ id: string; role: string; content: string }[]>([]);
+    const [input, setInput] = useState("");
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const [showSignUp, setShowSignUp] = useState(false);
 
-const groq = new Groq({
-  apiKey: GROQ_API_KEY,
-});
+    // Scroll to the latest message
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
 
-// Utility: Filter articles published today (UTC)
-function filterTodayArticles(items: Parser.Item[]) {
-  const now = new Date();
-  const start = new Date(now);
-  const end = new Date(now);
-  start.setUTCHours(0, 0, 0, 0);
-  end.setUTCHours(23, 59, 59, 999);
+    // Fetch messages when user logs in
+    useEffect(() => {
+        if (user) fetchMessages();
+    }, [user]);
 
-  return items.filter((item) => {
-    const pub = new Date(item.pubDate || "");
-    return pub >= start && pub <= end;
-  });
-}
+    // Real-time updates from Supabase
+    useEffect(() => {
+        if (!user) return;
 
-export async function POST(req: Request) {
-  try {
-    const { message } = await req.json();
-    let articles: Parser.Item[] = [];
+        const subscription = supabase
+            .channel("messages")
+            .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
+                setMessages((prev) => {
+                    const exists = prev.some((msg) => msg.id === payload.new.id);
+                    if (!exists) {
+                        return [
+                            ...prev,
+                            {
+                                id: payload.new.id,
+                                role: payload.new.role,
+                                content: payload.new.content,
+                            },
+                        ];
+                    }
+                    return prev;
+                });
+            })
+            .subscribe();
 
-    // Debugging: Check if message contains "latest news"
-    console.log("Received message:", message);
-    console.log("Includes 'latest news'?", message.toLowerCase().includes("latest news"));
+        return () => {
+            supabase.removeChannel(subscription);
+        };
+    }, [user]);
 
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const urlMatch = message.match(urlRegex);
+    // Fetch user-specific messages from Supabase
+    const fetchMessages = async () => {
+        const { data, error } = await supabase
+            .from("messages")
+            .select("*")
+            .eq("user_id", user?.id)
+            .order("created_at", { ascending: true });
 
-    if (urlMatch) {
-      const articleUrl = urlMatch[0];
-      const articleRes = await fetch(articleUrl);
-      const articleText = await articleRes.text();
+        if (error) {
+            console.error("Error fetching messages: ", error);
+        } else {
+            setMessages(data.map((msg) => ({
+                id: msg.id,
+                role: msg.role,
+                content: msg.content
+            })));
+        }
+    };
 
-      const dom = new JSDOM(articleText);
-      const document = dom.window.document;
+    const sendMessage = async () => {
+        if (!input.trim()) return;
 
-      const paragraphs = Array.from(document.querySelectorAll("p"));
-      const articleContent = paragraphs
-        .map((p) => p.textContent?.trim())
-        .filter((text) => text)
-        .join(" ");
+        if (!user) {
+            alert("Please sign in to chat.");
+            return;
+        }
 
-      if (!articleContent || articleContent.length < 50) {
-        return NextResponse.json({
-          reply: "I couldn't extract meaningful content from this URL. Try another article link.",
-        });
-      }
+        const newMessage = { id: crypto.randomUUID(), role: "user", content: input, user_id: user.id };
+        setMessages((prev) => [...prev, newMessage]);
+        setInput("");
 
-      const summaryResponse = await groq.chat.completions.create({
-        messages: [
-          { role: "system", content: "Summarize the given article in a short and clear way." },
-          { role: "user", content: articleContent },
-        ],
-        model: "llama3-70b-8192",
-      });
+        await supabase.from("messages").insert([newMessage]);
 
-      return NextResponse.json({
-        reply:
-          summaryResponse?.choices[0]?.message?.content ||
-          "Couldn't summarize this article.",
-      });
-    }
+        try {
+            const res = await axios.post("/api/chat", { message: input });
+            const aiMessage = {
+                id: crypto.randomUUID(),
+                role: "ai",
+                content: res.data.reply,
+                user_id: user.id,
+            };
+            setMessages((prev) => [...prev, aiMessage]);
+            await supabase.from("messages").insert([aiMessage]);
+        } catch (error) {
+            console.error("Error fetching response:", error);
+        }
+    };
 
-    // Fetch latest news if message includes "latest news"
-    if (message.toLowerCase().includes("latest news")) {
-      const res = await fetch("https://news.google.com/rss", {
-        headers: {
-          "Cache-Control": "no-cache",
-          "Pragma": "no-cache",
-        },
-      });
-      const xml = await res.text();
-      const feed = await parser.parseString(xml);
+    return (
+        <div className="h-screen w-screen flex flex-col bg-gray-900 text-white">
+            {/* Header */}
+            <div className="p-4 text-center border-b border-gray-700">
+                <h1 className="text-3xl font-bold text-center">📰 AI News Assistant</h1>
+            </div>
 
-      // Debugging: Check if articles are fetched from RSS
-      console.log("Fetched articles from RSS:", feed.items);
+            {!isSignedIn ? (
+                <div className="text-center flex justify-center items-center mt-5">
+                    {showSignUp ? <SignUp routing="hash" /> : <SignIn routing="hash" />}
+                </div>
+            ) : (
+                <>
+                    <div className="text-center flex justify-between px-4 py-2">
+                        <h1 className="text-2xl font-bold">Welcome, {user.fullName}</h1>
+                        {/* <UserButton afterSignOutUrl="/" /> */}
+                    </div>
 
-      const todayArticles = filterTodayArticles((feed.items || []) as Parser.Item[]);
-      articles = todayArticles.slice(0, 3);
+                    {/* Chat Messages */}
+                    <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 pb-16">
+                        {messages.length === 0 ? (
+                            <p className="text-gray-400 text-center">No messages yet. Start a conversation!</p>
+                        ) : (
+                            messages.map((msg) => (
+                                <div
+                                    key={msg.id}
+                                    className={`flex items-start gap-3 w-full ${msg.role === "user" ? "justify-end" : "justify-start"
+                                        }`}
+                                >
+                                    {msg.role === "ai" ?
+                                        <div className="flex gap-2">
+                                            <BotIcon className="w-10 h-10 text-gray-400" />
+                                            <div className="p-3 rounded-lg max-w-full bg-gray-800 text-gray-200 m-2" >
+                                                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                            </div>
+                                        </div> :
+                                        <div className="flex gap-2">
+                                            <div className="p-3 rounded-lg max-w-full bg-blue-500 text-white ">
+                                                <span className="break-words" >
+                                                    {msg.content}
+                                                </span>
+                                            </div>
+                                            <UserButton />
+                                        </div>
+                                    }
+                                </div>
+                            ))
+                        )}
+                        <div ref={messagesEndRef} />
+                    </div>
 
-      // Debugging: Check if articles after filtering are available
-      console.log("Today's articles:", articles);
-    }
-
-    let prompt = `User: ${message}\nAI:`;
-    if (articles.length > 0) {
-      prompt += "\nHere are the top news articles today:\n" +
-        articles.map((a, i) => `${i + 1}. ${a.title} - ${a.link}`).join("\n");
-    } else {
-      prompt += "\nNo news articles available for today.";
-    }
-
-    const response = await groq.chat.completions.create({
-      messages: [
-        { role: "user", content: prompt },
-      ],
-      model: "llama3-8b-8192",
-      temperature: 0.7,
-    });
-
-    // Debugging: Check the Groq API response
-    console.log("Groq response:", response);
-
-    return NextResponse.json({
-      reply: response?.choices[0]?.message?.content || "Sorry, I couldn't fetch the latest news.",
-    });
-  } catch (error) {
-    console.error("Error fetching news: ", error);
-    return NextResponse.json({
-      error: "Failed to Fetch News",
-      status: 500,
-    });
-  }
+                    {/* Input Box */}
+                    <div className="p-4 border-gray-700 fixed bottom-0 w-full flex">
+                        <div className="w-full max-w-4xl mx-auto flex items-center gap-2">
+                            <input
+                                type="text"
+                                className="flex-1 p-3 bg-gray-700 text-white rounded-lg outline-none w-full"
+                                placeholder="Ask me anything..."
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                            />
+                            <button
+                                className="bg-blue-600 px-4 py-2 rounded-lg text-white flex items-center"
+                                onClick={sendMessage}
+                            >
+                                <Send className="w-4 h-4 mr-1" /> Send
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
+    );
 }
