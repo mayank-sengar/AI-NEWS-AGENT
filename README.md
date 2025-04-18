@@ -29,22 +29,22 @@ AI News Assistant is a modern web application that combines AI-powered news summ
    ```bash
    git clone https://github.com/your-username/ai-news-assistant.git
 Install dependencies:
+cd ai-news-assistant
+npm install
 
 bash
 Copy
 Edit
 cd ai-news-assistant
 npm install
-Create a .env.local file in the root directory and add the following environment variables:
 
-env
-Copy
-Edit
+Create a .env.local file in the root directory and add the following environment variables:
 NEXT_PUBLIC_GROQ_API_KEY=your-groq-api-key
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
 CLERK_SECRET_KEY=your-clerk-secret-key
+
 Start the development server:
 
 bash
