@@ -1,7 +1,7 @@
 "use client";
 import { SignIn, SignUp, UserButton, useUser } from "@clerk/nextjs";
 import axios from "axios";
-import { BotIcon, Send, User } from "lucide-react";
+import { BotIcon, Send } from "lucide-react"; // Removed unused 'User'
 import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "../lib/supabase";
@@ -11,19 +11,16 @@ export default function Chat() {
     const [messages, setMessages] = useState<{ id: string; role: string; content: string }[]>([]);
     const [input, setInput] = useState("");
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
-    const [showSignUp, setShowSignUp] = useState(false);
+    // Removed unused: const [showSignUp, setShowSignUp] = useState(false);
 
-    // Scroll to the latest message
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    // Fetch messages when user logs in
     useEffect(() => {
         if (user) fetchMessages();
     }, [user]);
 
-    // Real-time updates from Supabase
     useEffect(() => {
         if (!user) return;
 
@@ -52,7 +49,6 @@ export default function Chat() {
         };
     }, [user]);
 
-    // Fetch user-specific messages from Supabase
     const fetchMessages = async () => {
         const { data, error } = await supabase
             .from("messages")
@@ -109,13 +105,12 @@ export default function Chat() {
 
             {!isSignedIn ? (
                 <div className="text-center flex justify-center items-center mt-5">
-                    {showSignUp ? <SignUp routing="hash" /> : <SignIn routing="hash" />}
+                    <SignIn routing="hash" />
                 </div>
             ) : (
                 <>
                     <div className="text-center flex justify-between px-4 py-2">
                         <h1 className="text-2xl font-bold">Welcome, {user.fullName}</h1>
-                        {/* <UserButton afterSignOutUrl="/" /> */}
                     </div>
 
                     {/* Chat Messages */}
