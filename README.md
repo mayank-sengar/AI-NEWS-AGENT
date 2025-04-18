@@ -50,34 +50,30 @@ AI News Assistant is a modern web application that combines AI-powered news summ
 Code Overview
 Chat Component
 The Chat component is the core of the interactive chat functionality. It allows users to send messages, receive AI-generated responses, and view real-time updates.
+## Key Features
 
-### Key Features:
-Real-Time Messaging: Messages are fetched and updated in real-time using Supabase.
+- **Real-Time Messaging**: Messages are fetched and updated in real-time using Supabase.
+- **AI Responses**: User messages are sent to the `/api/chat` endpoint, and AI-generated responses are displayed.
+- **Authentication**: Users must sign in using Clerk to access the chat functionality.
 
-AI Responses: User messages are sent to the /api/chat endpoint, and AI-generated responses are displayed.
+## News Summaries
 
-Authentication: Users must sign in using Clerk to access the chat functionality.
+- Open the homepage to view the latest news summaries.
+- Click on a news title to read the full article.
 
-News Summaries
-Open the homepage to view the latest news summaries.
+## Chat with AI
 
-Click on a news title to read the full article.
+- Sign in using Clerk authentication.
+- Use the chat interface to:
+  - Ask questions.
+  - Summarize articles by pasting their URLs.
+  - Request the latest news.
 
-Chat with AI
-Sign in using Clerk authentication.
+## License
 
-Use the chat interface to:
-
-Ask questions.
-
-Summarize articles by pasting their URLs.
-
-Request the latest news.
-
-License
 This project is licensed under the MIT License.
 
-Contact
+### Contact
 For any inquiries or support, please contact:
 
 Email: mayanksengar1008@gmail.com
