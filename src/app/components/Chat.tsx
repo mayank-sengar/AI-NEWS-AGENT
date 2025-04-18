@@ -1,6 +1,6 @@
 "use client";
 
-import { SignIn, SignUp, UserButton, useUser } from "@clerk/nextjs";
+import { SignIn, UserButton, useUser } from "@clerk/nextjs"; // ✅ Fixed import
 import axios from "axios";
 import { BotIcon, Send } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
