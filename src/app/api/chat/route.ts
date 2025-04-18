@@ -29,11 +29,15 @@ export async function POST(req: Request) {
     const { message } = await req.json();
     let articles: Parser.Item[] = [];
 
+    console.log("[Chat] Received message:", message);
+
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const urlMatch = message.match(urlRegex);
 
+    // 🔗 If it's a URL -> summarize article
     if (urlMatch) {
       const articleUrl = urlMatch[0];
+      console.log("[Chat] Detected URL:", articleUrl);
 
       const articleRes = await fetch(articleUrl);
       const articleText = await articleRes.text();
@@ -55,14 +59,8 @@ export async function POST(req: Request) {
 
       const summaryResponse = await groq.chat.completions.create({
         messages: [
-          {
-            role: "system",
-            content: "Summarize the given article in a short and clear way.",
-          },
-          {
-            role: "user",
-            content: articleContent,
-          },
+          { role: "system", content: "Summarize the given article in a short and clear way." },
+          { role: "user", content: articleContent },
         ],
         model: "llama3-70b-8192",
       });
@@ -74,39 +72,49 @@ export async function POST(req: Request) {
       });
     }
 
+    // 📰 If the message includes "latest news" -> fetch RSS
     if (message.toLowerCase().includes("latest news")) {
+      console.log("[Chat] Triggered latest news fetch...");
+
       const res = await fetch("https://news.google.com/rss", {
         headers: {
           "Cache-Control": "no-cache",
           "Pragma": "no-cache",
         },
       });
+
       const xml = await res.text();
       const feed = await parser.parseString(xml);
 
+      console.log("[Chat] Fetched RSS feed, items count:", feed.items?.length || 0);
+
       const todayArticles = filterTodayArticles((feed.items || []) as Parser.Item[]);
       articles = todayArticles.slice(0, 3);
+
+      console.log("[Chat] Filtered today articles:", articles);
     }
 
+    // 🧠 Send to LLM
     let prompt = `User: ${message}\nAI:`;
     if (articles.length > 0) {
       prompt += "\nHere are the top news articles today:\n" +
         articles.map((a, i) => `${i + 1}. ${a.title} - ${a.link}`).join("\n");
+    } else if (message.toLowerCase().includes("latest news")) {
+      prompt += "\nSorry, I couldn't find any news articles for today.";
     }
 
     const response = await groq.chat.completions.create({
       messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
+        { role: "user", content: prompt },
       ],
       model: "llama3-8b-8192",
       temperature: 0.7,
     });
 
+    console.log("[Chat] Groq response:", response);
+
     return NextResponse.json({
-      reply: response?.choices[0]?.message?.content,
+      reply: response?.choices[0]?.message?.content || "Sorry, I couldn't generate a reply.",
     });
   } catch (error) {
     console.error("Error fetching news: ", error);
