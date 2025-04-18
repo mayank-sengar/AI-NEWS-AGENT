@@ -3,7 +3,7 @@ import Parser from "rss-parser";
 import Groq from "groq-sdk";
 import { JSDOM } from "jsdom";
 
-const parser = new Parser();
+const parser: Parser = new Parser();
 const GROQ_API_KEY = process.env.NEXT_PUBLIC_GROQ_API_KEY;
 
 const groq = new Groq({
@@ -11,7 +11,7 @@ const groq = new Groq({
 });
 
 // Utility: Filter articles published today (UTC)
-function filterTodayArticles(items: any[]) {
+function filterTodayArticles(items: Parser.Item[]) {
   const now = new Date();
   const start = new Date(now);
   const end = new Date(now);
@@ -27,9 +27,8 @@ function filterTodayArticles(items: any[]) {
 export async function POST(req: Request) {
   try {
     const { message } = await req.json();
-    let articles: any[] = [];
+    let articles: Parser.Item[] = [];
 
-    // Check for a URL in message
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const urlMatch = message.match(urlRegex);
 
@@ -75,7 +74,6 @@ export async function POST(req: Request) {
       });
     }
 
-    // If user asks for latest news
     if (message.toLowerCase().includes("latest news")) {
       const res = await fetch("https://news.google.com/rss", {
         headers: {
@@ -86,11 +84,10 @@ export async function POST(req: Request) {
       const xml = await res.text();
       const feed = await parser.parseString(xml);
 
-      const todayArticles = filterTodayArticles(feed.items || []);
+      const todayArticles = filterTodayArticles((feed.items || []) as Parser.Item[]);
       articles = todayArticles.slice(0, 3);
     }
 
-    // Build AI prompt
     let prompt = `User: ${message}\nAI:`;
     if (articles.length > 0) {
       prompt += "\nHere are the top news articles today:\n" +

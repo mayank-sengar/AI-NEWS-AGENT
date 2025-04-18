@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import Parser from "rss-parser";
 import Groq from "groq-sdk";
-import axios from "axios";
 
-const parser = new Parser();
+const parser: Parser = new Parser();
 const GROQ_API_KEY = process.env.NEXT_PUBLIC_GROQ_API_KEY;
 
 const groq = new Groq({
@@ -17,15 +16,14 @@ export async function GET() {
         const articles = feed.items.slice(0, 3);
 
         const summaries = await Promise.all(
-            articles.map(async (article) => {
-                const prompt = `Summarize this article in 3 bullet points:\n\nTitle: ${article.title}\nContent: ${article.contentSnippet}`
+            articles.map(async (article: Parser.Item) => {
+                const prompt = `Summarize this article in 3 bullet points:\n\nTitle: ${article.title}\nContent: ${article.contentSnippet}`;
 
-                // Call Groq Cloud API 
                 const response = await groq.chat.completions.create({
                     messages: [
                         {
                             role: "user",
-                            content: prompt
+                            content: prompt,
                         },
                     ],
                     model: "llama3-8b-8192",
@@ -41,12 +39,13 @@ export async function GET() {
                 };
             })
         );
+
         return NextResponse.json({ summaries });
     } catch (error) {
         console.error("Error fetching news: ", error);
         return NextResponse.json({
-            error: 'Failed to Fetch News',
-            status: 500
+            error: "Failed to Fetch News",
+            status: 500,
         });
     }
 }
