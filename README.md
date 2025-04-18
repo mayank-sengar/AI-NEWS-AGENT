@@ -51,32 +51,13 @@ Code Overview
 Chat Component
 The Chat component is the core of the interactive chat functionality. It allows users to send messages, receive AI-generated responses, and view real-time updates.
 
-Key Features:
+### Key Features:
 Real-Time Messaging: Messages are fetched and updated in real-time using Supabase.
 
 AI Responses: User messages are sent to the /api/chat endpoint, and AI-generated responses are displayed.
 
 Authentication: Users must sign in using Clerk to access the chat functionality.
 
-Deployment
-Deploy on Vercel
-Push your code to a GitHub repository.
-
-Go to Vercel and import your repository.
-
-Add the environment variables in the Vercel Dashboard under Settings > Environment Variables.
-
-Deploy the application.
-
-Environment Variables
-
-Name	Description
-NEXT_PUBLIC_GROQ_API_KEY	API key for Groq SDK
-NEXT_PUBLIC_SUPABASE_URL	Supabase project URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY	Supabase public API key
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY	Clerk publishable API key
-CLERK_SECRET_KEY	Clerk secret API key
-Usage
 News Summaries
 Open the homepage to view the latest news summaries.
 
@@ -93,56 +74,13 @@ Summarize articles by pasting their URLs.
 
 Request the latest news.
 
-Project Structure
-vbnet
-Copy
-Edit
-ai-news-assistant/
-├── pages/
-│   ├── api/
-│   ├── chat.tsx
-│   └── ...
-├── components/
-│   └── Chat.tsx
-├── lib/
-│   └── supabase.ts
-└── public/
-    └── ...
-Contributing
-Contributions are welcome! To contribute:
-
-Fork the repository.
-
-Create a new branch:
-
-bash
-Copy
-Edit
-git checkout -b your-branch-name
-Make your changes and commit them:
-
-bash
-Copy
-Edit
-git commit -m "Your commit message"
-Push to your branch:
-
-bash
-Copy
-Edit
-git push origin your-branch-name
-Open a pull request.
-
 License
 This project is licensed under the MIT License.
 
 Contact
 For any inquiries or support, please contact:
 
-Email: your-email@example.com
+Email: mayanksengar1008@gmail.com
 
-GitHub: your-username
+GitHub: https://github.com/mayank-sengar
 
-css
-Copy
-Edit
